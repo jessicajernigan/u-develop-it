@@ -2,11 +2,11 @@ const sqlite3 = require('sqlite3').verbose();
 const express = require('express');
 const PORT = process.env.PORT || 3001;
 const app = express();
+const inputCheck = require('./utils/inputCheck');
 
 // Express Middleware
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
-
 
 const db = new sqlite3.Database('./db/election.db', err => {
   if (err) {
@@ -26,6 +26,10 @@ const db = new sqlite3.Database('./db/election.db', err => {
 
 
 // GET a single candidate
+/* 
+- includes a route parameter to uniquely identify the candidate to remove. 
+- done using a prepared SQL statement with a placeholder
+*/
 app.get('/api/candidate/:id', (req, res) => {
   const sql = `SELECT * FROM candidates 
   WHERE id = ?`;
@@ -49,12 +53,11 @@ app.get('/api/candidate/:id', (req, res) => {
 - uses its own HTTP request method -- delete()
 - as above, includes a route parameter to uniquely identify the candidate to remove. 
 - done using a prepared SQL statement with a placeholder
-
 */
 app.delete('/api/candidate/:id', (req, res) => {
   const sql = `DELETE FROM candidates WHERE id = ?`;
   const params = [req.params.id];
-  db.run(sql, params, function(err, result) {
+  db.run(sql, params, function (err, result) {
     if (err) {
       res.status(400).json({ error: res.message });
       return;
@@ -68,20 +71,36 @@ app.delete('/api/candidate/:id', (req, res) => {
 });
 
 
-// // CREATE a candidate
-// const sql = 
-// `INSERT INTO candidates (id, first_name, last_name, industry_connected) 
-// VALUES (?,?,?,?)`;
-// const params = [1, 'Ronald', 'Firbank', 1];
-// // ES5 function, not arrow function, to use this
-// db.run(sql, params, function (err, result) {
-//   if (err) {
-//     console.log(err);
-//   }
-//   console.log(result, this.lastID);
-// });
+// CREATE a candidate
+app.post('/api/candidate', ({ body }, res) => {
+  const errors = inputCheck(body, 'first_name', 'last_name', 'industry_connected');
+  if (errors) {
+    res.status(400).json({ error: errors });
+    return;
+  }
 
-// Get all candidates
+  const sql =
+    `INSERT INTO candidates (first_name, last_name, industry_connected) 
+  VALUES (?,?,?)`;
+  const params = [body.first_name, body.last_name, body.industry_connected];
+  // ES5 function, not arrow function, to use `this`
+  db.run(sql, params, function (err, result) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+
+    res.json({
+      message: 'Candidate created successfully!',
+      data: body,
+      id: this.lastID
+    });
+  });
+
+});
+
+
+// GET all candidates
 app.get('/api/candidates', (req, res) => {
   const sql = `SELECT * FROM candidates`;
   const params = [];
@@ -100,11 +119,16 @@ app.get('/api/candidates', (req, res) => {
 
 
 
+
+
+
+
+
+
 // "CATCHALL ROUTE" >> DEFAULT RESPONSE FOR ANY OTHER REQUEST (i.e. NOT FOUND)
 app.use((req, res) => {
   res.status(404).end();
 });
-
 
 
 /* To ensure that the Express.js server doesn't start before the connection 
