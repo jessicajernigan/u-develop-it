@@ -28,8 +28,8 @@ const db = new sqlite3.Database('./db/election.db', err => {
 // GET a single candidate
 app.get('/api/candidate/:id', (req, res) => {
   const sql = `SELECT * FROM candidates 
-               WHERE id = ?`;
-  const params = [req.params.id];
+  WHERE id = ?`;
+  const params = [req.params.id]; // a route parameter that will hold the value of the id to specify which candidate we'll select from the database
   db.get(sql, params, (err, row) => {
     if (err) {
       res.status(400).json({ error: err.message });
@@ -44,27 +44,42 @@ app.get('/api/candidate/:id', (req, res) => {
 });
 
 
-// // DELETE a candidate
-// db.run(`DELETE FROM candidates WHERE id = ?`, 1, function (err, result) {
+// DELETE a candidate
+/* 
+- uses its own HTTP request method -- delete()
+- as above, includes a route parameter to uniquely identify the candidate to remove. 
+- done using a prepared SQL statement with a placeholder
+
+*/
+app.delete('/api/candidate/:id', (req, res) => {
+  const sql = `DELETE FROM candidates WHERE id = ?`;
+  const params = [req.params.id];
+  db.run(sql, params, function(err, result) {
+    if (err) {
+      res.status(400).json({ error: res.message });
+      return;
+    }
+
+    res.json({
+      message: 'Candidate deleted successfully',
+      changes: this.changes // Verifies whether any rows were changed.
+    });
+  });
+});
+
+
+// // CREATE a candidate
+// const sql = 
+// `INSERT INTO candidates (id, first_name, last_name, industry_connected) 
+// VALUES (?,?,?,?)`;
+// const params = [1, 'Ronald', 'Firbank', 1];
+// // ES5 function, not arrow function, to use this
+// db.run(sql, params, function (err, result) {
 //   if (err) {
 //     console.log(err);
 //   }
-//   console.log(result, this, this.changes);
+//   console.log(result, this.lastID);
 // });
-
-
-// CREATE a candidate
-const sql = 
-`INSERT INTO candidates (id, first_name, last_name, industry_connected) 
-VALUES (?,?,?,?)`;
-const params = [1, 'Ronald', 'Firbank', 1];
-// ES5 function, not arrow function, to use this
-db.run(sql, params, function (err, result) {
-  if (err) {
-    console.log(err);
-  }
-  console.log(result, this.lastID);
-});
 
 // Get all candidates
 app.get('/api/candidates', (req, res) => {
