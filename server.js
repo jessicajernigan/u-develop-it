@@ -31,8 +31,12 @@ const db = new sqlite3.Database('./db/election.db', err => {
 - done using a prepared SQL statement with a placeholder
 */
 app.get('/api/candidate/:id', (req, res) => {
-  const sql = `SELECT * FROM candidates 
-  WHERE id = ?`;
+  const sql = `SELECT candidates.*, parties.name 
+  AS party_name 
+  FROM candidates 
+  LEFT JOIN parties 
+  ON candidates.party_id = parties.id 
+  WHERE candidates.id = ?`;
   const params = [req.params.id]; // a route parameter that will hold the value of the id to specify which candidate we'll select from the database
   db.get(sql, params, (err, row) => {
     if (err) {
@@ -102,7 +106,11 @@ app.post('/api/candidate', ({ body }, res) => {
 
 // GET all candidates
 app.get('/api/candidates', (req, res) => {
-  const sql = `SELECT * FROM candidates`;
+  const sql = `SELECT candidates.*, parties.name 
+  AS party_name 
+  FROM candidates 
+  LEFT JOIN parties 
+  ON candidates.party_id = parties.id`;
   const params = [];
   db.all(sql, params, (err, rows) => {
     if (err) {
