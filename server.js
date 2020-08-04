@@ -1,20 +1,17 @@
-const sqlite3 = require('sqlite3').verbose();
 const express = require('express');
+const db = require('./db/database');
+
 const PORT = process.env.PORT || 3001;
 const app = express();
-const inputCheck = require('./utils/inputCheck');
+
+const apiRoutes = require('./routes/apiRoutes'); // Remember that you don't have to specify index.js in the path (e.g., ./routes/apiRoutes/index.js). If the directory has an index.js file in it, Node.js will automatically look for it when requiring the directory.
 
 // Express Middleware
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-const db = new sqlite3.Database('./db/election.db', err => {
-  if (err) {
-    return console.error(err.message);
-  }
-
-  console.log('Connected to the election database.');
-});
+// Use apiRoutes
+app.use('/api', apiRoutes);
 
 
 // // TEST GET ROUTE
@@ -25,107 +22,7 @@ const db = new sqlite3.Database('./db/election.db', err => {
 // });
 
 
-// GET a single candidate
-/* 
-- includes a route parameter to uniquely identify the candidate to remove. 
-- done using a prepared SQL statement with a placeholder
-*/
-app.get('/api/candidate/:id', (req, res) => {
-  const sql = `SELECT * FROM candidates 
-  WHERE id = ?`;
-  const params = [req.params.id]; // a route parameter that will hold the value of the id to specify which candidate we'll select from the database
-  db.get(sql, params, (err, row) => {
-    if (err) {
-      res.status(400).json({ error: err.message });
-      return;
-    }
-
-    res.json({
-      message: 'success',
-      data: row
-    });
-  });
-});
-
-
-// DELETE a candidate
-/* 
-- uses its own HTTP request method -- delete()
-- as above, includes a route parameter to uniquely identify the candidate to remove. 
-- done using a prepared SQL statement with a placeholder
-*/
-app.delete('/api/candidate/:id', (req, res) => {
-  const sql = `DELETE FROM candidates WHERE id = ?`;
-  const params = [req.params.id];
-  db.run(sql, params, function (err, result) {
-    if (err) {
-      res.status(400).json({ error: res.message });
-      return;
-    }
-
-    res.json({
-      message: 'Candidate deleted successfully',
-      changes: this.changes // Verifies whether any rows were changed.
-    });
-  });
-});
-
-
-// CREATE a candidate
-app.post('/api/candidate', ({ body }, res) => {
-  const errors = inputCheck(body, 'first_name', 'last_name', 'industry_connected');
-  if (errors) {
-    res.status(400).json({ error: errors });
-    return;
-  }
-
-  const sql =
-    `INSERT INTO candidates (first_name, last_name, industry_connected) 
-  VALUES (?,?,?)`;
-  const params = [body.first_name, body.last_name, body.industry_connected];
-  // ES5 function, not arrow function, to use `this`
-  db.run(sql, params, function (err, result) {
-    if (err) {
-      res.status(400).json({ error: err.message });
-      return;
-    }
-
-    res.json({
-      message: 'Candidate created successfully!',
-      data: body,
-      id: this.lastID
-    });
-  });
-
-});
-
-
-// GET all candidates
-app.get('/api/candidates', (req, res) => {
-  const sql = `SELECT * FROM candidates`;
-  const params = [];
-  db.all(sql, params, (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-
-    res.json({
-      message: 'Success!',
-      data: rows
-    });
-  });
-});
-
-
-
-
-
-
-
-
-
-// "CATCHALL ROUTE" >> DEFAULT RESPONSE FOR ANY OTHER REQUEST (i.e. NOT FOUND)
+// Default response for any other request (Not Found)
 app.use((req, res) => {
   res.status(404).end();
 });
